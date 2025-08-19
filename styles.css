@@ -1,0 +1,24 @@
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  text-align: center;
+  transition: background 0.5s ease;
+  color: #222;
+}
+
+main {
+  padding: 2rem;
+  max-width: 600px;
+}
+
+body.sunday { background: #f9e2e2; }
+body.monday { background: #e2f0f9; }
+body.tuesday { background: #e2f9e7; }
+body.wednesday { background: #f9f4e2; }
+body.thursday { background: #e9e2f9; }
+body.friday { background: #f9e2f4; }
+body.saturday { background: #e2f9f3; }
