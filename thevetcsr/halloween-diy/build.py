@@ -4,6 +4,11 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.colors import HexColor, white
 from reportlab.platypus import Paragraph
 from reportlab.lib.styles import ParagraphStyle
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+import random
+pdfmetrics.registerFont(TTFont("Body", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"))
+pdfmetrics.registerFont(TTFont("Head", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"))
 
 ROOT=Path(__file__).resolve().parent
 OUT=ROOT.parent/'output/pdf/TheVetCSR-Halloween-Front-Desk-DIY-Manual.pdf'
@@ -13,24 +18,74 @@ c.setTitle('A Little Boo at the Front Desk | TheVetCSR')
 c.setAuthor('TheVetCSR')
 INK=HexColor('#202829'); TEAL=HexColor('#175d60'); ORANGE=HexColor('#c25b24'); PAPER=HexColor('#faf7ef')
 page=0
-style=ParagraphStyle('body',fontName='Helvetica',fontSize=11,leading=16,textColor=INK)
+style=ParagraphStyle('body',fontName='Body',fontSize=11,leading=16,textColor=INK)
 def text(s,x,y,w=508,size=11,color=INK):
-    st=ParagraphStyle('local',parent=style,fontSize=size,leading=size*1.45,textColor=color)
+    st=ParagraphStyle('local',parent=style,fontName='Head' if size>=15 else 'Body',fontSize=size,leading=size*1.28,textColor=color)
     p=Paragraph(s,st); _,h=p.wrap(w,700); p.drawOn(c,x,y-h); return y-h
+def star(x,y,r=6):
+    c.setStrokeColor(INK);c.setFillColor(HexColor('#e8bc52'));c.setLineWidth(.7)
+    p=c.beginPath()
+    for i in range(10):
+        rad=r if i%2==0 else r*.43;xx=x+rad*cos(pi/2+i*pi/5);yy=y+rad*sin(pi/2+i*pi/5)
+        if i==0:p.moveTo(xx,yy)
+        else:p.lineTo(xx,yy)
+    p.close();c.drawPath(p,fill=1)
 def begin(title,kicker='THEVETCSR / HALLOWEEN WORKSHOP',template=False):
-    global page
-    page+=1
+    global page, is_template
+    page+=1;is_template=template
     c.setFillColor(white if template else PAPER);c.rect(0,0,612,792,fill=1,stroke=0)
-    c.setFillColor(TEAL);c.rect(42,734,528,5,fill=1,stroke=0)
-    text(kicker,42,720,528,9,TEAL)
-    text(title,42,695,528,27)
+    # a reusable notebook frame, outside the printable workspace
+    c.setStrokeColor(HexColor('#e0ddd3'));c.setLineWidth(.5);c.setDash()
+    for y in range(65,760,24):
+        if not template:c.line(30,y,35,y)
+    c.line(31,58,31,752)
+    for y in range(85,745,28):
+        c.setFillColor(white);c.setStrokeColor(INK);c.setLineWidth(1.4)
+        c.circle(22,y,3.5,fill=1);c.arc(6,y-6,29,y+6,35,290)
+    c.setFillColor(TEAL);c.rect(42,731,528,24,fill=1,stroke=0)
+    text(kicker,51,750,510,8,white)
+    c.setFillColor(HexColor('#eee0c4') if not template else HexColor('#f3f3f0'))
+    p=c.beginPath();p.moveTo(42,715);p.lineTo(565,719);p.lineTo(570,646);p.lineTo(548,648);p.lineTo(525,644);p.lineTo(42,647);p.close();c.drawPath(p,fill=1,stroke=0)
+    text(title,52,704,505,25)
+    c.setFillColor(HexColor('#e9c271'));c.saveState();c.translate(52,721);c.rotate(-7);c.rect(-8,-4,64,13,fill=1,stroke=0);c.restoreState()
     c.setStrokeColor(HexColor('#c8c9c4'));c.line(42,48,570,48)
-    text('THEVETCSR  |  A LITTLE BOO AT THE FRONT DESK',42,36,470,8)
-    text(str(page),542,36,28,8)
-def end(): c.showPage()
+    text('THEVETCSR | A LITTLE BOO AT THE FRONT DESK',42,36,470,7)
+    text(str(page).zfill(2),542,36,28,9,TEAL)
+    if not template:
+        rng=random.Random(page)
+        for i in range(15):
+            c.setFillColor(HexColor('#cabaa6'));c.circle(rng.uniform(573,595),rng.uniform(73,710),rng.uniform(.4,1.3),fill=1,stroke=0)
+        star(584,700);star(584,115,8)
+def end():
+    if not is_template and page not in [1,7]:
+        # restrained original clinic doodles in the footer margin
+        c.setStrokeColor(TEAL);c.setLineWidth(1.1);c.setDash()
+        c.arc(473,62,497,84,180,180);c.line(473,73,473,87);c.line(497,73,497,87)
+        c.bezier(485,62,485,53,516,54,516,74);c.circle(516,77,4)
+        star(543,76,7)
+    if not is_template and page not in [1,7,11,22,24]:
+        # Original vector clinic vignette: festive detail outside the instructions.
+        c.setFillColor(HexColor('#f0e1c9'));c.roundRect(65,94,375,75,8,fill=1,stroke=0)
+        c.setStrokeColor(INK);c.setLineWidth(1.2)
+        c.setFillColor(ORANGE);c.ellipse(84,108,142,151,fill=1)
+        c.arc(97,108,127,151,0,360);c.line(113,151,116,160)
+        c.setFillColor(INK);c.circle(103,136,2,fill=1);c.circle(123,136,2,fill=1);c.arc(103,116,125,131,180,180)
+        # tiny desk phone with receiver and dial
+        c.setFillColor(TEAL);c.roundRect(182,107,66,35,6,fill=1)
+        c.roundRect(176,146,76,13,5,fill=1)
+        c.setFillColor(white)
+        for dx in [198,213,228]:
+            for dy in [117,129]:c.circle(dx,dy,2,fill=1,stroke=0)
+        c.setStrokeColor(INK);c.bezier(250,151,271,128,252,112,269,105)
+        ghost(298,107,44,51,True,False)
+        star(381,145,8);star(409,115,6)
+    c.showPage()
 def section(label,body,y):
-    y=text(label.upper(),48,y,510,10,TEAL)-7
-    return text(body,48,y,510)-22
+    # taped label strip with robust spacing and actual text, never baked in
+    c.setFillColor(HexColor('#dcebe7'));c.rect(47,y-17,516,22,fill=1,stroke=0)
+    c.setFillColor(ORANGE);c.rect(47,y-17,4,22,fill=1,stroke=0)
+    y=text(label.upper(),57,y+1,495,9,TEAL)-11
+    return text(body,51,y,507,10.5)-23
 def bullet(items,y):
     for item in items:y=text('• '+item,53,y,505)-10
     return y
@@ -41,7 +96,7 @@ def calibration():
     text('1 inch square',125,118,180,10)
     text('Print Actual Size / 100%. Measure this square before cutting.',125,98,390,9)
 def dashed():c.setStrokeColor(INK);c.setLineWidth(.8);c.setDash(4,3)
-def ghost(x,y,w=130,h=150,cat=False):
+def ghost(x,y,w=130,h=150,cat=False,label=True):
     dashed();p=c.beginPath();p.moveTo(x,y);p.lineTo(x,y+h*.65)
     if cat:
         p.lineTo(x+w*.12,y+h);p.lineTo(x+w*.32,y+h*.82);p.curveTo(x+w*.42,y+h*.9,x+w*.58,y+h*.9,x+w*.68,y+h*.82);p.lineTo(x+w*.88,y+h);p.lineTo(x+w,y+h*.65)
@@ -49,19 +104,38 @@ def ghost(x,y,w=130,h=150,cat=False):
     p.lineTo(x+w,y)
     for a in [0.8,0.6,0.4,0.2,0]:p.lineTo(x+w*a,y+(12 if int(a*10)%4==0 else 0))
     p.close();c.drawPath(p);c.setDash();c.setFillColor(INK)
-    c.circle(x+w*.35,y+h*.56,4,fill=1);c.circle(x+w*.65,y+h*.56,4,fill=1)
-    c.arc(x+w*.39,y+h*.32,x+w*.61,y+h*.49,180,180)
-    c.circle(x+w*.5,y+h*.77,2);text('TAPE TAB / OPTIONAL HOLE',x,y-17,w,7)
+    if cat:
+        c.setFillColor(INK);c.setStrokeColor(INK)
+        c.ellipse(x+w*.16,y+h*.12,x+w*.84,y+h*.64,fill=1,stroke=0)
+        c.circle(x+w*.5,y+h*.65,w*.24,fill=1,stroke=0)
+        for z in [.28,.60]:
+            p=c.beginPath();p.moveTo(x+w*z,y+h*.75);p.lineTo(x+w*(z+.02),y+h*.92);p.lineTo(x+w*(z+.17),y+h*.76);p.close();c.drawPath(p,fill=1,stroke=0)
+        c.setFillColor(HexColor('#e8bc52'))
+        for z in [.40,.60]:
+            c.ellipse(x+w*(z-.055),y+h*.63,x+w*(z+.055),y+h*.68,fill=1,stroke=0)
+        c.setFillColor(white);c.circle(x+w*.5,y+h*.59,2,fill=1,stroke=0)
+    else:
+        c.circle(x+w*.35,y+h*.56,4,fill=1);c.circle(x+w*.65,y+h*.56,4,fill=1)
+        c.arc(x+w*.39,y+h*.32,x+w*.61,y+h*.49,180,180)
+    c.setFillColor(INK);c.circle(x+w*.5,y+h*.77,2)
+    if label:text('TAPE FLAT / OPTIONAL HOLE',x,y-17,w,7)
 def card(x,y,w,h,title,sub=''):
-    dashed();c.rect(x,y,w,h);c.setDash();text(title,x+14,y+h-18,w-28,16)
-    if sub:text(sub,x+14,y+h-68,w-28,10)
-
-begin('A Little Boo\nat the Front Desk')
-text('A HALLOWEEN DIY MANUAL FOR VETERINARY TEAMS',48,595,500,13,ORANGE)
-text('Small projects. Real templates.\nA lobby that still works.',48,520,490,29)
-ghost(390,282,120,145,True);ghost(245,257,115,145)
-text('Six projects for October: welcoming displays, paper ghost pets, a pumpkin cone, useful desk signs, seated activities, and team appreciation.',48,218,500,13)
-text('US Letter • Print at 100% • Designed for repeat use',48,120,480,10)
+    dashed();c.rect(x,y,w,h);c.setDash()
+    c.setFillColor(HexColor('#e2eeea'));c.rect(x+8,y+h-12,w-16,5,fill=1,stroke=0)
+    c.setFillColor(ORANGE);c.circle(x+w-19,y+18,5,fill=1,stroke=0)
+    title_end=text(title,x+14,y+h-23,w-28,15,TEAL)
+    if sub:text(sub,x+14,title_end-12,w-28,9.5)
+begin('A LITTLE BOO<br/>AT THE FRONT DESK')
+text('HALLOWEEN DIY MANUAL',52,622,500,21,ORANGE)
+text('Make October a little less scary.',52,582,500,13)
+art=ROOT/'cover-art.png'
+if art.exists():
+    c.drawImage(str(art),133,158,width=348,height=390,preserveAspectRatio=True,anchor='c',mask='auto')
+else:
+    ghost(345,275,145,190,True);ghost(110,248,160,210)
+text('SIX PROJECTS  /  REAL TEMPLATES  /  A LOBBY THAT WORKS',52,148,500,10,TEAL)
+text('Print, cut, build, and bring a little kindness to the counter.',52,119,500,11)
+text('US Letter | 24 pages | Reusable October workshop',52,87,500,9)
 end()
 
 begin('Start small. Make it useful.')
@@ -208,8 +282,8 @@ begin('My tiny Halloween hunt','PROJECT 05 / PLAYER SHEET',True)
 text('Find each doodle on the display. Tick it off, then draw your own clinic ghost below.',48,622,510,13)
 y=555
 for name in ['Ghost','Black cat','Pumpkin','Paw print','Bone','Heart']:y=check(y,name)
-c.setStrokeColor(INK);c.setDash(4,3);c.rect(48,135,516,225);c.setDash()
-text('MY CLINIC GHOST',62,346,480,10,TEAL)
+c.setStrokeColor(INK);c.setDash(4,3);c.rect(48,135,516,195);c.setDash()
+text('MY CLINIC GHOST',62,316,480,10,TEAL)
 text('Stay with your grown-up. Leave pets settled. Fun is optional.',48,107,510,11)
 end()
 
